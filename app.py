@@ -1,12 +1,13 @@
 import os
 from datetime import timedelta
+from enum import Enum
 from uuid import uuid4
 
 from flask import Flask, request, abort, jsonify, send_from_directory
 from flask_jwt_extended import JWTManager, jwt_required, create_access_token, get_jwt_identity
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Enum as SQLEnum
 from sqlalchemy.orm import relationship
 
 app = Flask(__name__, static_folder=None)
@@ -23,6 +24,13 @@ migrate = Migrate(app, db)
 jwt = JWTManager(app)
 
 
+class MentorshipState(Enum):
+    not_enough_points = 'not_enough_points'
+    uninitialized = 'uninitialized'
+    waiting = 'waiting'
+    mentored = 'mentored'
+
+
 class Kid(db.Model):
     __tablename__ = 'kids'
     id = Column(Integer, primary_key=True)
@@ -33,6 +41,7 @@ class Kid(db.Model):
     goal = Column(String(1024))
     points = Column(Integer, nullable=False, default=100)
     avatar = Column(String(512))
+    mentorship = Column(SQLEnum(MentorshipState), nullable=False, default=MentorshipState.not_enough_points)
     tasks = relationship('Task')
     interests = relationship('Tag', secondary='interests')
 
@@ -43,9 +52,26 @@ class Tag(db.Model):
     name = Column(String(64), unique=True, nullable=False)
 
 
+class Mentor(db.Model):
+    __tablename__ = 'mentors'
+    id = Column(Integer, primary_key=True)
+    name = Column(String(256), nullable=False)
+    photo = Column(String(1024))
+    position = Column(String(256), nullable=False)
+    bio = Column(String(1024), nullable=False)
+    expertises = relationship('Tag', secondary='expertises')
+
+
 interests = db.Table(  # noqa
     'interests',
     Column('kid_id', Integer, ForeignKey('kids.id'), primary_key=True),
+    Column('tag_id', Integer, ForeignKey('tags.id'), primary_key=True),
+)
+
+
+expertises = db.Table(  # noqa
+    'expertises',
+    Column('mentor_id', Integer, ForeignKey('mentors.id'), primary_key=True),
     Column('tag_id', Integer, ForeignKey('tags.id'), primary_key=True),
 )
 
@@ -97,11 +123,13 @@ def login():
     kid = Kid.query.filter_by(account_id=account_id).one_or_none()
     if kid is None:
         abort(400)
+    register = False
     if kid.phone_number is None:
         kid.phone_number = phone_number
         db.session.commit()
+        register = True
     token = create_access_token(identity=kid.id)
-    return jsonify(token=token)
+    return jsonify(token=token, register=register)
 
 
 @app.route('/tags', methods=['POST'])
