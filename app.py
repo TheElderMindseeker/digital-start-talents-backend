@@ -252,7 +252,9 @@ def profile():
     kid = Kid.query.get(get_jwt_identity())
     kid_profile = {
         'goal': kid.goal,
-        'tasks': [{'text': task.text, 'done': task.done} for task in sorted(kid.tasks, key=lambda t: t.order)],
+        'tasks': [
+            {'id': task.id, 'text': task.text, 'done': task.done} for task in sorted(kid.tasks, key=lambda t: t.order)
+        ],
         'interests': [interest.name for interest in kid.interests],
         'name': kid.name,
         'points': kid.points,
