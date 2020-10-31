@@ -132,8 +132,14 @@ def login():
     return jsonify(token=token, register=register)
 
 
-@app.route('/tags', methods=['POST'])
-def add_tag():
+@app.route('/tags', methods=['GET', 'POST'])
+def manage_tags():
+    if request.method == 'GET':
+        tag_name_start = request.args.get('tag', '').lower()
+        all_tags = Tag.query.all()
+        tag_names = [tag.name for tag in all_tags if tag.name.lower().startswith(tag_name_start)]
+        return jsonify(tags=tag_names)
+    # POST
     tag_name = request.json['tag']
     new_tag = Tag(name=tag_name)
     try:
@@ -142,14 +148,6 @@ def add_tag():
     except Exception:  # noqa
         return '', 400
     return '', 201
-
-
-@app.route('/tags')
-def list_tags():
-    tag_name_start = request.json['tag'].lower()
-    all_tags = Tag.query.all()
-    tag_names = [tag.name for tag in all_tags if tag.name.lower().startswith(tag_name_start)]
-    return jsonify(tags=tag_names)
 
 
 @app.route('/kids/interests', methods=['POST'])
