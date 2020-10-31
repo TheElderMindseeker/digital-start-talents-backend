@@ -313,3 +313,13 @@ def like_mentor():
     kid.likes.append(mentor_id)
     db.session.commit()
     return '', 200
+
+
+@app.route('/kids/mentor/ready', methods=['POST'])
+@jwt_required
+def wait_for_mentor():
+    kid = Kid.query.get(get_jwt_identity())
+    if kid.mentorship == MentorshipState.uninitialized:
+        kid.mentorship = MentorshipState.waiting
+        db.session.commit()
+    return '', 200
