@@ -10,6 +10,8 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Enum as SQLEnum
 from sqlalchemy.orm import relationship
 
+MENTORSHIP_REQUIRES = 1_000
+
 app = Flask(__name__, static_folder=None)
 script_path = os.path.dirname(os.path.abspath(__file__))
 default_db_path = os.path.join(script_path, 'hackathon.db')
@@ -123,13 +125,11 @@ def login():
     kid = Kid.query.filter_by(account_id=account_id).one_or_none()
     if kid is None:
         abort(400)
-    register = False
     if kid.phone_number is None:
         kid.phone_number = phone_number
         db.session.commit()
-        register = True
     token = create_access_token(identity=kid.id)
-    return jsonify(token=token, register=register)
+    return jsonify(token=token, register=(kid.goal is None))
 
 
 @app.route('/tags', methods=['GET', 'POST'])
@@ -255,5 +255,16 @@ def profile():
         'name': kid.name,
         'points': kid.points,
         'avatar': kid.avatar,
+        'mentorship': kid.mentorship.name,
     }
     return jsonify(profile=kid_profile)
+
+
+@app.route('/kids/points/add', methods=['POST'])
+def add_points():
+    kid = Kid.query.filter_by(account_id=request.json['account_id']).one()
+    kid.points += request.json['amount']
+    if kid.points >= MENTORSHIP_REQUIRES and kid.mentorship == MentorshipState.not_enough_points:
+        kid.mentorship = MentorshipState.uninitialized
+    db.session.commit()
+    return '', 200
