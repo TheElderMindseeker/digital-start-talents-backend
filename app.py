@@ -189,7 +189,9 @@ def set_avatar():
 def manage_tasks():
     kid = Kid.query.get(get_jwt_identity())
     if request.method == 'GET':
-        tasks = [{'text': task.text, 'done': task.done} for task in sorted(kid.tasks, key=lambda t: t.order)]
+        tasks = [
+            {'id': task.id, 'text': task.text, 'done': task.done} for task in sorted(kid.tasks, key=lambda t: t.order)
+        ]
         return jsonify(tasks=tasks)
     if request.method == 'POST':
         new_task = Task(kid_id=kid.id, **request.json)
@@ -197,9 +199,9 @@ def manage_tasks():
         db.session.commit()
         return '', 201
     # PUT
-    order = request.json['order']
+    task_id = request.json['id']
     done = request.json['done']
-    task = Task.query.filter_by(kid_id=kid.id, order=order).one_or_none()
+    task = Task.query.get(task_id)
     if task is None:
         abort(404)
     task.done = done
