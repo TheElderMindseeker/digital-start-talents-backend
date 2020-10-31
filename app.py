@@ -46,6 +46,7 @@ class Kid(db.Model):
     mentorship = Column(SQLEnum(MentorshipState), nullable=False, default=MentorshipState.not_enough_points)
     tasks = relationship('Task')
     interests = relationship('Tag', secondary='interests')
+    likes = relationship('Mentor', secondary='likes')
 
 
 class Tag(db.Model):
@@ -62,6 +63,13 @@ class Mentor(db.Model):
     position = Column(String(256), nullable=False)
     bio = Column(String(1024), nullable=False)
     expertises = relationship('Tag', secondary='expertises')
+
+
+likes = db.Table(  # noqa
+    'likes',
+    Column('kid_id', Integer, ForeignKey('kids.id'), primary_key=True),
+    Column('mentor_id', Integer, ForeignKey('mentors.id'), primary_key=True),
+)
 
 
 interests = db.Table(  # noqa
@@ -251,6 +259,7 @@ def get_proposition_card():
 def profile():
     kid = Kid.query.get(get_jwt_identity())
     kid_profile = {
+        'account_id': kid.account_id,
         'goal': kid.goal,
         'tasks': [
             {'id': task.id, 'text': task.text, 'done': task.done} for task in sorted(kid.tasks, key=lambda t: t.order)
@@ -270,5 +279,37 @@ def add_points():
     kid.points += request.json['amount']
     if kid.points >= MENTORSHIP_REQUIRES and kid.mentorship == MentorshipState.not_enough_points:
         kid.mentorship = MentorshipState.uninitialized
+    db.session.commit()
+    return '', 200
+
+
+@app.route('/mentors', methods=['GET', 'POST'])
+def manage_mentors():
+    if request.method == 'GET':
+        mentors = [
+            {
+                'id': mentor.id,
+                'name': mentor.name,
+                'photo': mentor.photo,
+                'position': mentor.position,
+                'bio': mentor.bio,
+                'expertises': [exp.name for exp in mentor.expertises]
+            }
+            for mentor in Mentor.query.all()
+        ]
+        return jsonify(mentors=mentors)
+    # POST
+    new_mentor = Mentor(**request.json)
+    db.session.add(new_mentor)
+    db.session.commit()
+    return '', 201
+
+
+@app.route('/kids/mentor/like', methods=['POST'])
+@jwt_required
+def like_mentor():
+    kid = Kid.query.get(get_jwt_identity())
+    mentor_id = request.json['id']
+    kid.likes.append(mentor_id)
     db.session.commit()
     return '', 200
