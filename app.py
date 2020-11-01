@@ -331,7 +331,6 @@ def like_mentor():
 @jwt_required
 def wait_for_mentor():
     kid = Kid.query.get(get_jwt_identity())
-    if kid.mentorship == MentorshipState.uninitialized:
-        kid.mentorship = MentorshipState.waiting
-        db.session.commit()
+    kid.mentorship = MentorshipState.waiting
+    db.session.commit()
     return '', 200
