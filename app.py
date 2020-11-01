@@ -310,7 +310,8 @@ def manage_mentors():
 def like_mentor():
     kid = Kid.query.get(get_jwt_identity())
     mentor_id = request.json['id']
-    kid.likes.append(mentor_id)
+    mentor = Mentor.query.get(mentor_id)
+    kid.likes.append(mentor)
     db.session.commit()
     return '', 200
 
