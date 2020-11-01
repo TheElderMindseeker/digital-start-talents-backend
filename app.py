@@ -109,7 +109,7 @@ class Proposition(db.Model):
 @app.route('/images', methods=['GET', 'POST'])
 def upload_image():
     if request.method == 'GET':
-        return send_from_directory(app.config['UPLOAD_FOLDER'], request.json['filename'])
+        return send_from_directory(app.config['UPLOAD_FOLDER'], request.args['filename'])
     # POST
     image_file = request.files['image']
     name, ext = os.path.splitext(image_file.filename)
