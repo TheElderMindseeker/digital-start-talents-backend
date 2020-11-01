@@ -305,6 +305,17 @@ def manage_mentors():
     return '', 201
 
 
+@app.route('/mentors/expertises', methods=['POST'])
+def add_expertises():
+    mentor = Mentor.query.get(request.json['id'])
+    for exp in request.json['expertises']:
+        expertise = Tag.query.filter_by(name=exp).one_or_none()
+        if expertise is not None:
+            mentor.expertises.append(expertise)
+    db.session.commit()
+    return '', 200
+
+
 @app.route('/kids/mentor/like', methods=['POST'])
 @jwt_required
 def like_mentor():
